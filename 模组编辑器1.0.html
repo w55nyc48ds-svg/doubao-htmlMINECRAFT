@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>我的世界网页版 · 模组编辑器</title>
+<style>
+  :root{ --gui:#c6c6c6; --slot:#8b8b8b; --dark:#373737; --ink:#2b2b2b; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; min-height:100vh; font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+        background:#1a1a1a; color:var(--ink); padding:14px; }
+  h1{ font-size:18px; color:#ffd76a; margin:0 0 4px; letter-spacing:1px; }
+  .sub{ color:#9c9384; font-size:12px; margin-bottom:12px; line-height:1.6; }
+  .wrap{ max-width:900px; margin:0 auto; }
+  .tabs{ display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+  .tab{ font:inherit; font-size:13px; padding:9px 14px; cursor:pointer; border:2px solid #000;
+        background:#a8a8a8; color:#222; box-shadow: inset 2px 2px 0 #e8e8e8, inset -2px -2px 0 #6f6f6f; }
+  .tab.on{ background:#7ec46b; color:#12260c; box-shadow: inset 2px 2px 0 #c8f0b8, inset -2px -2px 0 #4a7d3a; }
+  .panel{ background:var(--gui); border:2px solid #000; padding:12px;
+          box-shadow: inset 2px 2px 0 #fff, inset -2px -2px 0 #555, 0 6px 18px rgba(0,0,0,.45);
+          display:none; }
+  .panel.on{ display:block; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:9px; align-items:center; }
+  .row > label{ font-size:12px; min-width:80px; color:#3c3c3c; }
+  input[type=text], input[type=number], select, textarea{
+    font:inherit; font-size:13px; padding:6px 8px; background:#8b8b8b; color:#111;
+    border:2px solid var(--dark); box-shadow: inset 2px 2px 0 #565656, inset -2px -2px 0 #b5b5b5; min-width:0; flex:1; }
+  textarea{ min-height:200px; font-family:ui-monospace,Consolas,monospace; font-size:12px; line-height:1.5; width:100%; }
+  .btn{ font:inherit; font-size:13px; padding:8px 14px; cursor:pointer; color:#222; border:2px solid #000;
+        background:#a8a8a8; box-shadow: inset 2px 2px 0 #e8e8e8, inset -2px -2px 0 #6f6f6f; }
+  .btn.green{ background:#7ec46b; color:#12260c; box-shadow: inset 2px 2px 0 #c8f0b8, inset -2px -2px 0 #4a7d3a; }
+  .btn.red{ background:#c96a6a; color:#2b0d0d; box-shadow: inset 2px 2px 0 #f0b8b8, inset -2px -2px 0 #7d3a3a; }
+  .card{ background:#8b8b8b; border:2px solid var(--dark); padding:8px; margin-top:8px;
+         box-shadow: inset 2px 2px 0 #b5b5b5, inset -2px -2px 0 #565656; }
+  .item-row{ display:flex; gap:8px; align-items:center; padding:6px; background:#a4a4a4;
+             border:1px solid #6f6f6f; margin-bottom:5px; }
+  .thumb{ width:40px; height:40px; background:#8b8b8b; border:2px solid #373737; image-rendering:pixelated; flex:none; }
+  .item-name{ flex:1; font-size:13px; }
+  .meta{ font-size:11px; color:#4a4a4a; }
+  .drop{ min-height:74px; border:2px dashed #6f6f6f; background:#9a9a9a; text-align:center;
+         padding:14px; font-size:12px; color:#333; cursor:pointer; }
+  .drop.hover{ background:#b7d9ac; border-color:#3f6b32; }
+  .hint{ font-size:11px; color:#5a5a5a; line-height:1.7; margin-top:6px; }
+  .split{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:640px){ .split{ grid-template-columns:1fr; } .row > label{ min-width:66px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>我的世界网页版 · 模组编辑器</h1>
+  <div class="sub">做物品、做生物、写规则 → 导出 JSON → 游戏里「模组 → 导入模组 JSON」。内容自动存本机。</div>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="base">基本信息</button>
+    <button class="tab" data-tab="items">物品</button>
+    <button class="tab" data-tab="mobs">生物</button>
+    <button class="tab" data-tab="rules">规则</button>
+    <button class="tab" data-tab="json">JSON 导出</button>
+  </div>
+
+  <!-- 基本信息 -->
+  <div class="panel on" id="p-base">
+    <div class="row"><label>模组 ID</label><input type="text" id="modId" placeholder="ruby_mod（英文数字下划线）"></div>
+    <div class="row"><label>模组名称</label><input type="text" id="modName" placeholder="红宝石模组"></div>
+    <div class="row"><label>作者</label><input type="text" id="modAuthor" placeholder="你的名字"></div>
+    <div class="row"><label>版本</label><input type="text" id="modVersion" placeholder="1.0" value="1.0"></div>
+    <div class="card">
+      <b>能做什么</b>
+      <div class="hint">
+        · 物品：名字、图标（导入图片 → 自动压到 64×64 → base64）、堆叠上限、攻击力<br>
+        · 生物：血量、攻击力、速度、体型、颜色、敌对/友善、自然生成、掉落<br>
+        · 规则：挖方块 / 杀生物 / 玩家受伤 / 每秒 → 发消息、给物品、扣血、回血、召唤生物、放方块、音效、爆炸
+      </div>
+    </div>
+  </div>
+
+  <!-- 物品 -->
+  <div class="panel" id="p-items">
+    <div class="split">
+      <div>
+        <div class="row"><label>物品 ID</label><input type="text" id="itId" placeholder="ruby"></div>
+        <div class="row"><label>显示名称</label><input type="text" id="itName" placeholder="红宝石"></div>
+        <div class="row"><label>堆叠上限</label><input type="number" id="itStack" value="64" min="1" max="64"></div>
+        <div class="row"><label>攻击力</label><input type="number" id="itAtk" value="0" min="0" max="20"></div>
+      </div>
+      <div>
+        <div class="drop" id="itDrop">点这里选图片，或把图片拖进来<br><span class="meta">自动缩放成 64×64 并转 base64</span></div>
+        <input type="file" id="itFile" accept="image/*" style="display:none">
+        <div class="row" style="margin-top:8px">
+          <div class="thumb" id="itPreview"></div>
+          <div class="meta" id="itSize">还没有图片</div>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn green" id="itAdd">添加到模组</button>
+      <button class="btn" id="itClear">清空表单</button>
+    </div>
+    <div id="itList"></div>
+  </div>
+
+  <!-- 生物 -->
+  <div class="panel" id="p-mobs">
+    <div class="split">
+      <div>
+        <div class="row"><label>生物 ID</label><input type="text" id="mbId" placeholder="ruby_golem"></div>
+        <div class="row"><label>名称</label><input type="text" id="mbName" placeholder="红宝石傀儡"></div>
+        <div class="row"><label>生命值</label><input type="number" id="mbHp" value="20" min="1"></div>
+        <div class="row"><label>攻击力</label><input type="number" id="mbDmg" value="3" min="0"></div>
+        <div class="row"><label>移动速度</label><input type="number" id="mbSpeed" value="1.8" min="0.2" step="0.1"></div>
+      </div>
+      <div>
+        <div class="row"><label>体型 宽</label><input type="number" id="mbW" value="0.9" step="0.1" min="0.3"></div>
+        <div class="row"><label>体型 高</label><input type="number" id="mbH" value="1.8" step="0.1" min="0.5"></div>
+        <div class="row"><label>身体颜色</label><input type="text" id="mbColor" value="#8a5a3c"></div>
+        <div class="row"><label>头部颜色</label><input type="text" id="mbHead" value="#8a5a3c"></div>
+        <div class="row"><label>性格</label>
+          <select id="mbHostile"><option value="0">友善（不主动打人）</option><option value="1">敌对（会追着打你）</option></select></div>
+        <div class="row"><label>自然生成</label>
+          <select id="mbSpawn"><option value="manual">否（规则或 /spawnmob 召唤）</option><option value="natural">是（野外随机出现）</option></select></div>
+      </div>
+    </div>
+    <div class="row"><label>掉落</label>
+      <select id="mbDrop"></select>
+      <input type="number" id="mbDropN" value="1" min="1" max="8" style="max-width:80px">
+      <button class="btn" id="mbDropAdd">加入</button>
+    </div>
+    <div id="mbDropList" class="meta"></div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn green" id="mbAdd">添加到模组</button>
+      <button class="btn" id="mbClear">清空表单</button>
+    </div>
+    <div id="mbList"></div>
+  </div>
+
+  <!-- 规则 -->
+  <div class="panel" id="p-rules">
+    <div class="row">
+      <label>什么时候</label>
+      <select id="rOn">
+        <option value="block_break">挖掉方块时</option>
+        <option value="mob_kill">打死生物时</option>
+        <option value="player_hurt">玩家受伤时</option>
+        <option value="tick">每秒钟</option>
+      </select>
+      <label>概率</label><input type="number" id="rChance" value="1" step="0.05" min="0" max="1" style="max-width:80px">
+    </div>
+    <div class="row">
+      <label>条件</label>
+      <select id="rCondType" style="max-width:180px">
+        <option value="">没有条件</option>
+        <option value="block">方块是…</option>
+        <option value="mob">生物是…</option>
+      </select>
+      <input type="text" id="rCondVal" placeholder="例如 stone / oak_log / m_ruby_golem">
+    </div>
+
+    <div class="card">
+      <b>要做的事</b>
+      <div id="actList"></div>
+      <div class="row" style="margin-top:6px">
+        <select id="actType" style="max-width:160px">
+          <option value="chat">发一条消息</option>
+          <option value="give">给物品</option>
+          <option value="damage">扣玩家血</option>
+          <option value="heal">给玩家回血</option>
+          <option value="spawn_mob">召唤生物</option>
+          <option value="set_block">脚下前方放方块</option>
+          <option value="sound">播放音效</option>
+          <option value="explode">前方爆炸</option>
+        </select>
+        <input type="text" id="actParam" placeholder="参数：消息文字 / 物品id / 生物id / 方块名">
+        <input type="number" id="actNum" value="1" min="1" style="max-width:80px">
+        <button class="btn" id="actAdd">加入</button>
+      </div>
+      <div id="actList" class="meta"></div>
+    </div>
+
+    <div class="row"><label>要做的事</label><div id="actListShow" class="meta" style="flex:1">（还没加动作）</div></div>
+    <div class="row">
+      <button class="btn green" id="rAdd">添加这条规则</button>
+      <button class="btn" id="rClear">清空本页表单</button>
+    </div>
+    <div id="rList"></div>
+  </div>
+
+  <!-- JSON -->
+  <div class="panel" id="p-json">
+    <div class="hint">下面是这个模组的 JSON。复制或下载成文件后，在游戏主菜单「模组 → 导入模组 JSON」里导入。</div>
+    <textarea id="jsonOut" spellcheck="false"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn green" id="btnDownload">下载 JSON</button>
+      <button class="btn" id="btnCopy">复制 JSON</button>
+      <button class="btn" id="btnImport">导入 JSON 文件</button>
+      <button class="btn red" id="btnReset">清空整个模组</button>
+      <input type="file" id="jsonFile" accept=".json,application/json" style="display:none">
+    </div>
+    <div class="card">
+      <b>想直接让 AI 帮你写？</b>
+      <div class="hint">
+        把下面这段提示词连同你的想法发给 AI，让它只返回 JSON，然后粘贴到上面的框里点「导入 JSON 文件」旁边的按钮（或直接改上面的框，会自动同步）。<br><br>
+        <code>你是 Minecraft 网页版模组作者。只返回 JSON，不要解释：<br>
+{"format":"mcweb-mod","version":1,"id":"my_mod","name":"模组名","author":"","items":[{"id":"ruby","name":"红宝石","stack":64,"attack":0,"image":null}],"mobs":[{"id":"golem","name":"傀儡","hp":40,"damage":6,"speed":2.2,"hostile":true,"size":{"w":1,"h":2},"color":"#b03030","headColor":"#d05050","spawn":"natural","drops":[{"item":"ruby","min":1}]}],"rules":[{"on":"block_break","if":{"block":"stone"},"chance":1,"do":[{"action":"give","item":"ruby","n":1},{"action":"chat","text":"挖到红宝石！"}]}]}<br>
+on: block_break / mob_kill / player_hurt / tick；action: chat(text) / give(item,n) / damage(n) / heal(n) / spawn_mob(mob) / set_block(block) / sound / explode</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const $ = s => document.querySelector(s);
+const KEY = 'mcweb_mod_editor_v1';
+
+let mod = {
+  format: 'mcweb-mod', version: 1, id: 'my_mod', name: '我的模组', author: '', modVersion: '1.0',
+  items: [], mobs: [], rules: []
+};
+let draftActs = [];
+let draftDrops = [];
+let curImage = null;
+
+function idSafe(v){ return String(v || '').trim().replace(/[^a-zA-Z0-9_]/g, '_'); }
+
+function save(){ localStorage.setItem(KEY, JSON.stringify(mod)); }
+function load(){
+  try { const r = JSON.parse(localStorage.getItem(KEY)); if (r && r.format === 'mcweb-mod') mod = r; } catch(e){}
+}
+
+/* ---------- 标签页 ---------- */
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('on'));
+    t.classList.add('on');
+    $('#p-' + t.dataset.tab).classList.add('on');
+    if (t.dataset.tab === 'json') renderJson();
+  };
+});
+
+/* ---------- 基本信息 ---------- */
+function bindMeta(){
+  const map = { modId:'id', modName:'name', modAuthor:'author', modVersion:'modVersion' };
+  for (const el in map){
+    const input = $('#' + el);
+    if (!input) continue;
+    input.value = mod[map[el]] || '';
+    input.oninput = () => { mod[map[el]] = el === 'modId' ? idSafe(input.value) : input.value; save(); if ($('#p-json').classList.contains('on')) renderJson(); };
+  }
+}
+
+/* ---------- 物品 ---------- */
+function compressImage(file, size){
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, size, size);
+      const s = Math.min(size / img.width, size / img.height);
+      const w = img.width * s, h = img.height * s;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      URL.revokeObjectURL(url);
+      resolve({ data: c.toDataURL('image/png'), w: size, h: size, bytes: c.toDataURL('image/png').length });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+async function handleImage(file){
+  if (!file) return;
+  const out = await compressImage(file, 64);
+  if (!out){ alert('这张图片读不出来'); return; }
+  curImage = out.data;
+  $('#itPreview').style.background = "url('" + out.data + "') center/contain no-repeat";
+  $('#itSize').textContent = '64×64 · 约 ' + Math.round(out.bytes/1024) + ' KB（base64 内嵌）';
+}
+
+function bindItems(){
+  const drop = $('#itDrop');
+  drop.onclick = () => $('#itFile').click();
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('hover'); };
+  drop.ondragleave = () => drop.classList.remove('hover');
+  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('hover'); handleImage(e.dataTransfer.files[0]); };
+  $('#itFile').onchange = (e) => { handleImage(e.target.files[0]); e.target.value = ''; };
+
+  $('#itClear').onclick = () => {
+    $('#itId').value = ''; $('#itName').value = ''; $('#itStack').value = 64; $('#itAtk').value = 0;
+    curImage = null; $('#itPreview').style.background = ''; $('#itSize').textContent = '还没有图片';
+  };
+
+  $('#itAdd').onclick = () => {
+    const id = idSafe($('#itId').value);
+    if (!id) return alert('物品 ID 不能空（英文/数字/下划线）');
+    const name = $('#itName').value.trim() || id;
+    const item = { id, name, stack: Math.max(1, Math.min(64, +$('#itStack').value || 64)), attack: Math.max(0, +$('#itAtk').value || 0), image: curImage };
+    const i = mod.items.findIndex(x => x.id === id);
+    if (i >= 0) mod.items[i] = item; else mod.items.push(item);
+    save(); renderItems(); renderDrops(); renderJson();
+    $('#itClear').click();
+    refresh();
+  };
+}
+
+function renderItems(){
+  const box = $('#itList');
+  if (!mod.items.length){ box.innerHTML = '<div class="meta" style="margin-top:8px">还没有物品</div>'; return; }
+  box.innerHTML = mod.items.map((it, i) => `
+    <div class="item-row">
+      <div class="thumb" style="${it.image ? "background:url('" + it.image + "') center/contain no-repeat" : ''}"></div>
+      <div class="item-name">${it.name}<div class="meta">ID: ${it.id} · 堆叠 ${it.stack} · 攻击 +${it.attack}</div></div>
+      <button class="btn red" data-del="${i}">删除</button>
+    </div>`).join('');
+  box.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { mod.items.splice(+b.dataset.del, 1); save(); renderItems(); renderDrops(); renderJson(); });
+}
+
+/* ---------- 生物 ---------- */
+function renderDrops(){
+  const sel = $('#mbDrop');
+  const list = mod.items.map(i => `<option value="${i.id}">${i.name}（${i.id}）</option>`).join('');
+  sel.innerHTML = list + '<option value="__custom">手填物品 id…</option>';
+  $('#mbDropList').textContent = draftDrops.length ? draftDrops.map(d => d.item + ' ×' + (d.min||1)).join('，') : '（没有掉落）';
+}
+
+function bindMobs(){
+  $('#mbDropAdd').onclick = () => {
+    let item = $('#mbDrop').value;
+    if (item === '__custom'){ item = prompt('输入要掉落的物品 id（例如 ruby 或原版的 apple）'); if (!item) return; }
+    draftDrops.push({ item, min: Math.max(1, Math.min(8, +$('#mbDropN').value || 1)) });
+    renderDrops();
+  };
+  $('#mbClear').onclick = () => {
+    $('#mbId').value = ''; $('#mbName').value = ''; $('#mbHp').value = 20; $('#mbDmg').value = 3; $('#mbSpeed').value = 1.8;
+    $('#mbW').value = 0.9; $('#mbH').value = 1.8; $('#mbColor').value = '#8a5a3c'; $('#mbHead').value = '#8a5a3c';
+    $('#mbHostile').value = '0'; $('#mbSpawn').value = 'manual';
+    draftDrops = []; renderDrops();
+  };
+  $('#mbAdd').onclick = () => {
+    const id = idSafe($('#mbId').value);
+    if (!id) return alert('生物 ID 不能空');
+    const mb = {
+      id, name: $('#mbName').value.trim() || id,
+      hp: +$('#mbHp').value || 20, damage: +$('#mbDmg').value || 0, speed: +$('#mbSpeed').value || 1.8,
+      hostile: $('#mbHostile').value === '1',
+      size: { w: +$('#mbW').value || 0.9, h: +$('#mbH').value || 1.8 },
+      color: $('#mbColor').value || '#8a5a3c', headColor: $('#mbHead').value || $('#mbColor').value,
+      spawn: $('#mbSpawn').value, drops: draftDrops.slice()
+    };
+    if (draftDrops.length && !draftDrops.some(d => d.item === id)) {}
+    const i = mod.mobs.findIndex(x => x.id === id);
+    if (i >= 0) mod.mobs[i] = mb; else mod.mobs.push(mb);
+    save(); renderMobs(); renderJson();
+    $('#mbClear').click();
+  };
+}
+
+function renderMobs(){
+  const box = $('#mbList');
+  if (!mod.mobs.length){ box.innerHTML = '<div class="meta" style="margin-top:8px">还没有生物</div>'; return; }
+  box.innerHTML = mod.mobs.map((m, i) => `
+    <div class="item-row">
+      <div class="thumb" style="background:${m.color};border-radius:50%"></div>
+      <div class="item-name">${m.name}<div class="meta">ID: ${m.id} · ${m.hostile ? '敌对' : '友善'} · HP ${m.hp} · 伤害 ${m.damage} · 速度 ${m.speed}${m.spawn === 'natural' ? ' · 自然生成' : ''}</div></div>
+      <button class="btn red" data-del="${i}">删除</button>
+    </div>`).join('');
+  box.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { mod.mobs.splice(+b.dataset.del, 1); save(); renderMobs(); renderJson(); });
+}
+
+/* ---------- 规则 ---------- */
+const ACT_META = {
+  chat: { label: '消息', param: '文字', needNum: false },
+  give: { label: '给物品', param: '物品 id', needNum: true },
+  damage: { label: '扣血', param: '（不需要）', needNum: true },
+  heal: { label: '回血', param: '（不需要）', needNum: true },
+  spawn_mob: { label: '召唤', param: '生物 id', needNum: false },
+  set_block: { label: '放方块', param: '方块名', needNum: false },
+  sound: { label: '音效', param: 'click / pop / hurt …', needNum: false },
+  explode: { label: '爆炸', param: '（不需要）', needNum: true }
+};
+
+function renderActs(){
+  const box = $('#actListShow');
+  box.innerHTML = draftActs.length
+    ? draftActs.map(a => (ACT_META[a.action] ? ACT_META[a.action].label : a.action) + (a.text ? '：' + a.text : '') + (a.item ? ' ' + a.item : '') + (a.mob ? ' ' + a.mob : '') + (a.block ? ' ' + a.block : '') + (a.n ? ' ×' + a.n : '')).join(' → ')
+    : '（还没加动作）';
+}
+
+function bindRules(){
+  $('#actAdd').onclick = () => {
+    const t = $('#actType').value;
+    const p = $('#actParam').value.trim();
+    const n = Math.max(1, +$('#actNum').value || 1);
+    const a = { action: t };
+    if (t === 'chat') a.text = p || '你好';
+    else if (t === 'give') { if (!p) return alert('填物品 id'); a.item = p; a.n = n; }
+    else if (t === 'spawn_mob') { if (!p) return alert('填生物 id'); a.mob = p; }
+    else if (t === 'set_block') { if (!p) return alert('填方块名，例如 stone'); a.block = p; }
+    else if (t === 'sound') a.sound = p || 'click';
+    else if (t === 'damage' || t === 'heal' || t === 'explode') a.n = n;
+    draftActs.push(a); renderActs();
+    $('#actParam').value = '';
+  };
+  $('#rAdd').onclick = () => {
+    if (!draftActs.length) return alert('先加至少一个动作');
+    const rule = { on: $('#rOn').value, chance: Math.max(0, Math.min(1, +$('#rChance').value || 1)), do: draftActs.slice() };
+    const ct = $('#rCondType').value, cv = $('#rCondVal').value.trim();
+    if (ct && cv) rule['if'] = { [ct]: cv };
+    mod.rules.push(rule); draftActs = []; save(); renderActs(); renderRules(); renderJson();
+  };
+  $('#rClear').onclick = () => { draftActs = []; renderActs(); $('#rCondVal').value = ''; };
+}
+
+const ON_LABEL = { block_break: '挖方块', mob_kill: '杀生物', player_hurt: '玩家受伤', tick: '每秒' };
+
+function renderRules(){
+  const box = $('#rList');
+  if (!mod.rules.length){ box.innerHTML = '<div class="meta" style="margin-top:8px">还没有规则</div>'; return; }
+  box.innerHTML = mod.rules.map((r, i) => `
+    <div class="item-row">
+      <div class="item-name">${ON_LABEL[r.on] || r.on}${r['if'] ? ' （' + Object.keys(r['if'])[0] + ' = ' + Object.values(r['if'])[0] + '）' : ''} · ${Math.round((r.chance ?? 1) * 100)}%
+        <div class="meta">${(r.do || []).map(a => (ACT_META[a.action] ? ACT_META[a.action].label : a.action) + (a.text ? '：' + a.text : '')).join(' → ')}</div>
+      </div>
+      <button class="btn red" data-del="${i}">删除</button>
+    </div>`).join('');
+  box.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { mod.rules.splice(+b.dataset.del, 1); save(); renderRules(); renderJson(); });
+}
+
+/* ---------- JSON ---------- */
+function cleanMod(){
+  const o = { format: 'mcweb-mod', version: 1, id: mod.id, name: mod.name, author: mod.author, modVersion: mod.modVersion };
+  if (mod.items.length) o.items = mod.items;
+  if (mod.mobs.length) o.mobs = mod.mobs;
+  if (mod.rules.length) o.rules = mod.rules;
+  return o;
+}
+function renderJson(){
+  const txt = JSON.stringify(cleanMod(), null, 2);
+  const out = $('#jsonOut');
+  if (out.value !== txt) out.value = txt;
+}
+function bindJson(){
+  $('#jsonOut').oninput = () => {
+    try {
+      const m = JSON.parse($('#jsonOut').value);
+      if (m.format !== 'mcweb-mod') return;
+      mod = Object.assign({ items: [], mobs: [], rules: [] }, m);
+      save(); bindMeta(); renderItems(); renderDrops(); renderMobs(); renderRules(); renderActs();
+    } catch(e){}
+  };
+  $('#btnDownload').onclick = () => {
+    const name = (mod.name || mod.id || 'mod') + '.json';
+    const blob = new Blob([JSON.stringify(cleanMod(), null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  };
+  $('#btnCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(JSON.stringify(cleanMod(), null, 2)); $('#btnCopy').textContent = '已复制'; setTimeout(()=>$('#btnCopy').textContent='复制 JSON', 1500); }
+    catch(e){ $('#jsonOut').select(); document.execCommand('copy'); }
+  };
+  $('#btnImport').onclick = () => $('#jsonFile').click();
+  $('#jsonFile').onchange = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const m = JSON.parse(rd.result);
+        if (m.format !== 'mcweb-mod') throw 0;
+        mod = Object.assign({ items: [], mobs: [], rules: [] }, m);
+        save(); refresh(); renderJson();
+        alert('导入成功：' + (mod.name || mod.id));
+      } catch(err){ alert('不是合法的模组 JSON'); }
+    };
+    rd.readAsText(f); e.target.value = '';
+  };
+  $('#btnReset').onclick = () => {
+    if (!confirm('清空整个模组？（本机的编辑内容都会没）')) return;
+    mod = { format:'mcweb-mod', version:1, id:'my_mod', name:'我的模组', author:'', modVersion:'1.0', items:[], mobs:[], rules:[] };
+    draftActs = []; draftDrops = []; save(); refresh(); renderJson();
+  };
+}
+
+/* ---------- 统一刷新 ---------- */
+function refresh(){
+  bindMeta(); renderItems(); renderDrops(); renderMobs(); renderRules(); renderActs(); renderJson();
+}
+
+load();
+bindMeta(); bindItems(); bindMobs(); bindRules(); bindJson();
+refresh();
+</script>
+</body>
+</html>
